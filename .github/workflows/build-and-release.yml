@@ -1,0 +1,86 @@
+name: Build and Release
+
+on:
+  release:
+    types:
+      - published
+    # Update this to the repository you want to monitor
+    repositories:
+      - amidaware/rmmagent
+
+jobs:
+  build-and-release:
+    name: Build and Release Executables
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout this repository
+      - name: Checkout Current Repo
+        uses: actions/checkout@v3
+
+      # Set up Go
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21' # Adjust this to your required Go version
+
+      - name: Clone Other Repository
+        run: |
+          git clone https://github.com/amidaware/rmmagent.git rmmagent
+          cd rmmagent
+          git checkout ${{ github.event.release.tag_name }}
+
+      # Build Linux executable
+      - name: Build Linux Executable
+        run: |
+          cd rmmagent
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../rmmagent-linux-amd64
+
+      # Build Windows executable
+      - name: Build Windows Executable
+        run: |
+          cd rmmagent
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../rmmagent-win-amd64.exe
+
+      # Upload artifacts
+      - name: Upload Executables
+        uses: actions/upload-artifact@v3
+        with:
+          name: executables
+          path: |
+            rmmagent-linux-amd64
+            rmmagent-win-amd64.exe
+
+      # Create a GitHub Release
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          release_name: Release ${{ github.event.release.tag_name }}
+          draft: false
+          prerelease: false
+
+      # Upload assets to the release
+      - name: Upload Assets to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: rmmagent-linux-amd64
+          asset_name: rmmagent-linux-amd64
+          asset_content_type: application/octet-stream
+
+      - name: Upload Windows Asset to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: rmmagent-win-amd64.exe
+          asset_name: rmmagent-win-amd64.exe
+          asset_content_type: application/octet-stream
+
