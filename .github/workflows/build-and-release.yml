@@ -31,7 +31,7 @@ jobs:
       # Build Linux executables
       - name: Build Linux Executables
         run: |
-          cd other-repo
+          cd rmmagent
           ARCHS='amd64 386 arm64 arm'
           for arch in ${ARCHS}; do
             env CGO_ENABLED=0 GOOS=linux GOARCH=${arch} go build -ldflags "-s -w" -o ../rmmagent-linux-${arch}
@@ -40,7 +40,7 @@ jobs:
       # Build Windows executables
       - name: Build Windows Executables
         run: |
-          cd other-repo
+          cd rmmagent
           ARCHS='amd64 386'
           for arch in ${ARCHS}; do
             env CGO_ENABLED=0 GOOS=windows GOARCH=${arch} go build -ldflags "-s -w" -o ../rmmagent-win-${arch}.exe
@@ -49,7 +49,7 @@ jobs:
       # Build macOS executables
       - name: Build macOS Executables
         run: |
-          cd other-repo
+          cd rmmagent
           ARCHS='amd64 arm64'
           for arch in ${ARCHS}; do
             env CGO_ENABLED=0 GOOS=darwin GOARCH=${arch} go build -ldflags "-s -w" -o ../rmmagent-darwin-${arch}
