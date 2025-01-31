@@ -55,16 +55,6 @@ jobs:
             env CGO_ENABLED=0 GOOS=darwin GOARCH=${arch} go build -ldflags "-s -w" -o ../rmmagent-darwin-${arch}
           done
 
-      # Upload artifacts
-      - name: Upload Executables
-        uses: actions/upload-artifact@v3
-        with:
-          name: executables
-          path: |
-            rmmagent-linux-*
-            rmmagent-win-*.exe
-            rmmagent-darwin-*
-
       # Create a GitHub Release
       - name: Create GitHub Release
         id: create_release
@@ -78,15 +68,9 @@ jobs:
           prerelease: false
 
       # Upload assets to the release
-      - name: Upload Assets to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Assets to Release with a wildcard
+        uses: csexton/release-asset-action@v3
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: |
-            rmmagent-linux-*
-            rmmagent-win-*.exe
-            rmmagent-darwin-*
-          asset_name: ${{ basename(asset_path) }}
-          asset_content_type: application/octet-stream
+          pattern: "rmmagent-*"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          release-url: ${{ steps.create_release.outputs.upload_url }}
