@@ -1,12 +1,10 @@
 name: Build and Release
 
 on:
-  release:
-    types:
-      - published
-    # Update this to the repository you want to monitor
-    repositories:
-      - amidaware/rmmagent
+  # create a release when a tag is published
+  push:
+    tags:
+      - "*"
 
 jobs:
   build-and-release:
@@ -22,25 +20,40 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21' # Adjust this to your required Go version
+          go-version: "1.21" # Adjust this to your required Go version
 
       - name: Clone Other Repository
         run: |
           git clone https://github.com/amidaware/rmmagent.git rmmagent
           cd rmmagent
-          git checkout ${{ github.event.release.tag_name }}
+          git checkout ${{ github.ref_name }}
 
-      # Build Linux executable
-      - name: Build Linux Executable
+      # Build Linux executables
+      - name: Build Linux Executables
         run: |
-          cd rmmagent
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../rmmagent-linux-amd64
+          cd other-repo
+          ARCHS='amd64 386 arm64 arm'
+          for arch in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=linux GOARCH=${arch} go build -ldflags "-s -w" -o ../rmmagent-linux-${arch}
+          done
 
-      # Build Windows executable
-      - name: Build Windows Executable
+      # Build Windows executables
+      - name: Build Windows Executables
         run: |
-          cd rmmagent
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../rmmagent-win-amd64.exe
+          cd other-repo
+          ARCHS='amd64 386'
+          for arch in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=windows GOARCH=${arch} go build -ldflags "-s -w" -o ../rmmagent-win-${arch}.exe
+          done
+
+      # Build macOS executables
+      - name: Build macOS Executables
+        run: |
+          cd other-repo
+          ARCHS='amd64 arm64'
+          for arch in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=darwin GOARCH=${arch} go build -ldflags "-s -w" -o ../rmmagent-darwin-${arch}
+          done
 
       # Upload artifacts
       - name: Upload Executables
@@ -48,8 +61,9 @@ jobs:
         with:
           name: executables
           path: |
-            rmmagent-linux-amd64
-            rmmagent-win-amd64.exe
+            rmmagent-linux-*
+            rmmagent-win-*.exe
+            rmmagent-darwin-*
 
       # Create a GitHub Release
       - name: Create GitHub Release
@@ -58,8 +72,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.release.tag_name }}
-          release_name: Release ${{ github.event.release.tag_name }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
 
@@ -70,17 +84,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: rmmagent-linux-amd64
-          asset_name: rmmagent-linux-amd64
+          asset_path: |
+            rmmagent-linux-*
+            rmmagent-win-*.exe
+            rmmagent-darwin-*
+          asset_name: ${{ basename(asset_path) }}
           asset_content_type: application/octet-stream
-
-      - name: Upload Windows Asset to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: rmmagent-win-amd64.exe
-          asset_name: rmmagent-win-amd64.exe
-          asset_content_type: application/octet-stream
-
